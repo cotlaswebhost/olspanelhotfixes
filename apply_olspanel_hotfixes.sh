@@ -56,10 +56,10 @@ new_func = '''def install_imunifyfav_now():
         print("Step 2: Removing Windows-style line endings from imunifyfav.sh...")
         subprocess.run(f"sed -i 's/\\\\r$//' {upgrade_script_path}", shell=True, check=True)
 
-        # Step 2.5: Prepare empty Imunify UI directory to avoid deploy abort.
-        print("Step 2.5: Preparing empty UI path...")
+        # Step 2.5: Preserve any existing Imunify UI bundle on disk.
+        print("Step 2.5: Preserving existing UI path...")
         subprocess.run(
-            f"mkdir -p {imunify_ui_path} && find {imunify_ui_path} -mindepth 1 -delete",
+            f"mkdir -p {imunify_ui_path}",
             shell=True,
             check=True,
         )
