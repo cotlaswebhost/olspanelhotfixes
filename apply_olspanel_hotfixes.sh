@@ -489,7 +489,7 @@ server_core_block = '''def manage_php_extension(php_version, extension, action):
 wv = whm_views.read_text(encoding='utf-8')
 wv, n1 = re.subn(r"@alogin_required\ndef php_ext\(request\):.*?(?=\n@alogin_required\ndef php_ext_manage\()", php_ext_block.rstrip()+"\n\n", wv, flags=re.S)
 wv, n2 = re.subn(r"@alogin_required\ndef php_ext_manage\(request\):.*?(?=\n@alogin_required\ndef php_ext_load\()", php_ext_manage_block.rstrip()+"\n\n", wv, flags=re.S)
-wv, n3 = re.subn(r"@alogin_required\ndef install_php_modules\(request\):.*?(?=\n\n\n@alogin_required\ndef whm_google_otp\()", install_modules_block.rstrip()+"\n\n", wv, flags=re.S)
+wv, n3 = re.subn(r"@alogin_required\ndef install_php_modules\(request\):.*?(?=\n@alogin_required\ndef )", install_modules_block.rstrip()+"\n\n", wv, flags=re.S)
 if n1 != 1 or n2 != 1 or n3 != 1:
     raise SystemExit(f"Could not patch whm/views.py blocks (php_ext={n1}, php_ext_manage={n2}, install_php_modules={n3})")
 whm_views.write_text(wv, encoding='utf-8')
