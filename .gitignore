@@ -1,0 +1,4 @@
+backups/
+uninstall-backups/
+*.pyc
+__pycache__/
