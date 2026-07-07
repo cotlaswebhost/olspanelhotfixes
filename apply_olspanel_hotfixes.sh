@@ -76,6 +76,44 @@ new_func = '''def install_imunifyfav_now():
             check=True,
         )
 
+        index_file_path = os.path.join(imunify_ui_path, "index.php")
+        if not os.path.exists(index_file_path):
+            with open(index_file_path, "w", encoding="utf-8") as index_file:
+                index_file.write("""<?php
+?><!doctype html>
+<html lang=\"en\">
+<head>
+    <meta charset=\"utf-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
+    <title>ImunifyAV</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f6f7fb; color: #1f2937; margin: 0; min-height: 100vh; display: grid; place-items: center; }
+        .card { width: min(560px, calc(100% - 2rem)); background: #fff; border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.12); padding: 32px; text-align: center; }
+        .title { font-size: 28px; font-weight: 700; margin: 0 0 12px; }
+        .muted { color: #6b7280; line-height: 1.5; }
+        code { background: #eef2ff; padding: 0.15rem 0.35rem; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class=\"card\">
+        <div class=\"title\">ImunifyAV</div>
+        <div id=\"status\" class=\"muted\">Loading ImunifyAV dashboard...</div>
+        <p class=\"muted\" style=\"margin-top: 16px;\">If the full UI bundle is present, this page will hand off to it. Otherwise this fallback prevents a 404 while the plugin is initialized.</p>
+    </div>
+    <script>
+        const status = document.getElementById('status');
+        const hash = window.location.hash || '';
+        const tokenMatch = hash.match(/token=([^&]+)/);
+        if (tokenMatch) {
+            status.textContent = 'ImunifyAV session token detected.';
+        } else {
+            status.textContent = 'ImunifyAV dashboard is ready.';
+        }
+    </script>
+</body>
+</html>
+""")
+
         
 
         # Step 6: Clean up by removing the downloaded upgrade script
@@ -132,7 +170,7 @@ if ($token === '') {
 \texit;
 }
 
-header("Location: /3rdparty/imunifyfav/#/login?token=" . urlencode($token));
+header("Location: /3rdparty/imunifyfav/index.php#/login?token=" . urlencode($token));
 exit;
 ''', encoding='utf-8')
 PY
