@@ -76,11 +76,13 @@ new_func = '''def install_imunifyfav_now():
             check=True,
         )
 
-        index_file_path = os.path.join(imunify_ui_path, "index.php")
-        if not os.path.exists(index_file_path):
-            with open(index_file_path, "w", encoding="utf-8") as index_file:
-                index_file.write("""<?php
-?><!doctype html>
+        index_php_path = os.path.join(imunify_ui_path, "index.php")
+        index_html_path = os.path.join(imunify_ui_path, "index.html")
+        if os.path.exists(index_php_path):
+            os.remove(index_php_path)
+        if not os.path.exists(index_html_path):
+            with open(index_html_path, "w", encoding="utf-8") as index_file:
+                index_file.write("""<!doctype html>
 <html lang=\"en\">
 <head>
     <meta charset=\"utf-8\">
