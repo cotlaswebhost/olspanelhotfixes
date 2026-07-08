@@ -86,6 +86,13 @@ new_func = '''def install_imunifyfav_now():
             check=True,
         )
 
+        # Restore execute permissions required by the Imunify frontend backend bridge.
+        subprocess.run(
+            f"chmod 755 {imunify_ui_path}/bin/execute.py {imunify_ui_path}/sbin/execute.py {imunify_ui_path}/sbin/*.sh {imunify_ui_path}/sbin/*.py || true",
+            shell=True,
+            check=False,
+        )
+
         # Keep bundle-provided index.php; it is the proper Imunify entrypoint.
 
         
