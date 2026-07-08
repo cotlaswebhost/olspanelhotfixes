@@ -86,9 +86,7 @@ new_func = '''def install_imunifyfav_now():
             check=True,
         )
 
-        index_php_path = os.path.join(imunify_ui_path, "index.php")
-        if os.path.exists(index_php_path):
-            os.remove(index_php_path)
+        # Keep bundle-provided index.php; it is the proper Imunify entrypoint.
 
         
 
@@ -146,13 +144,19 @@ if ($token === '') {
 \texit;
 }
 
-$bundle_index = __DIR__ . '/brought_by_package_manager/nav-root/index.html';
+$bundle_index_php = __DIR__ . '/index.php';
+$bundle_nav_index = __DIR__ . '/brought_by_package_manager/nav-root/index.html';
 $fallback_index = __DIR__ . '/index.html';
-$target = file_exists($bundle_index)
-    ? '/3rdparty/imunifyfav/brought_by_package_manager/nav-root/index.html'
-    : '/3rdparty/imunifyfav/index.html';
 
-if (!file_exists($bundle_index) && !file_exists($fallback_index)) {
+if (file_exists($bundle_index_php)) {
+    $target = '/3rdparty/imunifyfav/index.php';
+} elseif (file_exists($bundle_nav_index)) {
+    $target = '/3rdparty/imunifyfav/brought_by_package_manager/nav-root/index.html';
+} else {
+    $target = '/3rdparty/imunifyfav/index.html';
+}
+
+if (!file_exists($bundle_index_php) && !file_exists($bundle_nav_index) && !file_exists($fallback_index)) {
     http_response_code(500);
     echo 'ImunifyAV UI bundle is not installed.';
     exit;
