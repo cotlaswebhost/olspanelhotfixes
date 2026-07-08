@@ -20,7 +20,7 @@ This repository provides:
 ### 1) ImunifyAV fixes (`imunify`)
 
 - Hardens Imunify installer flow in `whm/function.py`
-- Clears stale UI content before deployment
+- Installs and extracts the `imunify-ui-generic` bundle when available
 - Normalizes ownership/permissions after deploy
 - Rewrites Imunify auto-login bridge in `3rdparty/imunifyfav/auto_index.php`
 

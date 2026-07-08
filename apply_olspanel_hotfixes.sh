@@ -42,9 +42,9 @@ imav_auto = base / "3rdparty" / "imunifyfav" / "auto_index.php"
 new_func = '''def install_imunifyfav_now():
     
     upgrade_script_url = "https://olspanel.com/extra/imunifyfav.sh"
-    extract_path = settings.BASE_DIR.parent
     upgrade_script_path = f"{settings.BASE_DIR.parent}/imunifyfav.sh"
     imunify_ui_path = f"{settings.BASE_DIR.parent}/3rdparty/imunifyfav"
+    imunify_bundle_zip = "/var/imunify360/generic/imunify-plugin.zip"
    
     
     try:
@@ -58,15 +58,25 @@ new_func = '''def install_imunifyfav_now():
 
         # Step 2.5: Preserve any existing Imunify UI bundle on disk.
         print("Step 2.5: Preserving existing UI path...")
-        subprocess.run(
-            f"mkdir -p {imunify_ui_path}",
-            shell=True,
-            check=True,
-        )
-        
+        subprocess.run(f"mkdir -p {imunify_ui_path}", shell=True, check=True)
+
         # Step 3: Running imunifyfav.sh
         print("Step 3: Running imunifyfav.sh...")
         subprocess.run(f"chmod +x {upgrade_script_path} && {upgrade_script_path}", shell=True, check=True)
+
+        # Step 3.5: Ensure the UI package is installed and extracted into OLSPanel.
+        print("Step 3.5: Ensuring Imunify UI bundle is present...")
+        subprocess.run(
+            "apt-get update && apt-get install -y imunify-ui-generic || yum install -y imunify-ui-generic",
+            shell=True,
+            check=False,
+        )
+        if os.path.exists(imunify_bundle_zip):
+            subprocess.run(
+                f"rm -rf {imunify_ui_path}/brought_by_package_manager && unzip -o {imunify_bundle_zip} -d {imunify_ui_path}",
+                shell=True,
+                check=True,
+            )
 
         # Step 4: Ensure UI files are readable by panel user.
         print("Step 4: Normalizing ownership and permissions...")
@@ -77,44 +87,8 @@ new_func = '''def install_imunifyfav_now():
         )
 
         index_php_path = os.path.join(imunify_ui_path, "index.php")
-        index_html_path = os.path.join(imunify_ui_path, "index.html")
         if os.path.exists(index_php_path):
             os.remove(index_php_path)
-        if not os.path.exists(index_html_path):
-            with open(index_html_path, "w", encoding="utf-8") as index_file:
-                index_file.write("""<!doctype html>
-<html lang=\"en\">
-<head>
-    <meta charset=\"utf-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-    <title>ImunifyAV</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f6f7fb; color: #1f2937; margin: 0; min-height: 100vh; display: grid; place-items: center; }
-        .card { width: min(560px, calc(100% - 2rem)); background: #fff; border-radius: 18px; box-shadow: 0 18px 60px rgba(0,0,0,.12); padding: 32px; text-align: center; }
-        .title { font-size: 28px; font-weight: 700; margin: 0 0 12px; }
-        .muted { color: #6b7280; line-height: 1.5; }
-        code { background: #eef2ff; padding: 0.15rem 0.35rem; border-radius: 6px; }
-    </style>
-</head>
-<body>
-    <div class=\"card\">
-        <div class=\"title\">ImunifyAV</div>
-        <div id=\"status\" class=\"muted\">Loading ImunifyAV dashboard...</div>
-        <p class=\"muted\" style=\"margin-top: 16px;\">If the full UI bundle is present, this page will hand off to it. Otherwise this fallback prevents a 404 while the plugin is initialized.</p>
-    </div>
-    <script>
-        const status = document.getElementById('status');
-        const hash = window.location.hash || '';
-        const tokenMatch = hash.match(/token=([^&]+)/);
-        if (tokenMatch) {
-            status.textContent = 'ImunifyAV session token detected.';
-        } else {
-            status.textContent = 'ImunifyAV dashboard is ready.';
-        }
-    </script>
-</body>
-</html>
-""")
 
         
 
@@ -150,7 +124,7 @@ imav_auto.write_text('''<?php
 $candidates = [];
 
 if (!empty($_SERVER['PANEL_USERNAME'])) {
-\t$candidates[] = $_SERVER['PANEL_USERNAME'];
+    $candidates[] = $_SERVER['PANEL_USERNAME'];
 }
 
 $candidates[] = 'root';
@@ -159,7 +133,7 @@ $candidates = array_values(array_unique($candidates));
 
 $token = '';
 foreach ($candidates as $username) {
-\t$candidate = trim((string)shell_exec("imunify-antivirus login get --username " . escapeshellarg($username) . " 2>/dev/null"));
+    $candidate = trim((string)shell_exec("imunify-antivirus login get --username " . escapeshellarg($username) . " 2>/dev/null"));
 \tif ($candidate !== '') {
 \t\t$token = $candidate;
 \t\tbreak;
@@ -172,7 +146,19 @@ if ($token === '') {
 \texit;
 }
 
-header("Location: /3rdparty/imunifyfav/index.php#/login?token=" . urlencode($token));
+$bundle_index = __DIR__ . '/brought_by_package_manager/nav-root/index.html';
+$fallback_index = __DIR__ . '/index.html';
+$target = file_exists($bundle_index)
+    ? '/3rdparty/imunifyfav/brought_by_package_manager/nav-root/index.html'
+    : '/3rdparty/imunifyfav/index.html';
+
+if (!file_exists($bundle_index) && !file_exists($fallback_index)) {
+    http_response_code(500);
+    echo 'ImunifyAV UI bundle is not installed.';
+    exit;
+}
+
+header("Location: " . $target . "#/login?token=" . urlencode($token));
 exit;
 ''', encoding='utf-8')
 PY

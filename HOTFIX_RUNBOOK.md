@@ -5,9 +5,9 @@ This runbook applies the non-plugin fixes we validated on this server.
 ## Covered fixes
 
 1. ImunifyAV 404/login failures
-- Hardens Imunify installer flow to clear stale UI directory before deployment.
+- Hardens Imunify installer flow to install/extract the `imunify-ui-generic` bundle when present.
 - Normalizes ownership and permissions after install.
-- Updates Imunify auto-login bridge to fallback token users (`PANEL_USERNAME`, `root`, `www-data`).
+- Updates Imunify auto-login bridge to fallback token users (`PANEL_USERNAME`, `root`, `www-data`) and redirect to the extracted `nav-root` bundle entry when it exists.
 
 2. Core webmail `/webmail` 404 behavior
 - Updates user webmail route to redirect into internal `webmail_service` using first mailbox.
