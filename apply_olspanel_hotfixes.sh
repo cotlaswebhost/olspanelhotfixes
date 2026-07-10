@@ -67,7 +67,7 @@ new_func = '''def install_imunifyfav_now():
         # Step 3.5: Ensure the UI package is installed and extracted into OLSPanel.
         print("Step 3.5: Ensuring Imunify UI bundle is present...")
         subprocess.run(
-            "apt-get update && apt-get install -y imunify-ui-generic || yum install -y imunify-ui-generic",
+            "apt-get update && (apt-get install -y imunify-ui-generic || apt-get install -y imunify-ui-antivirus-generic) || yum install -y imunify-ui-generic",
             shell=True,
             check=False,
         )
@@ -126,7 +126,7 @@ if (!file_exists($bundle_index_php) && !file_exists($bundle_nav_index) && !file_
 
 header("Location: " . $target . "#/login?token=" . urlencode($token));
 exit;
-""", encoding='utf-8')
+""")
 
         # Step 4: Ensure UI files are readable by panel user.
         print("Step 4: Normalizing ownership and permissions...")
@@ -225,6 +225,86 @@ exit;
 PY
 
   php -l "$imav_auto" >/dev/null
+
+    # Apply bundle deployment immediately for already-installed Imunify instances.
+    local ui_dir="$BASE_DIR/3rdparty/imunifyfav"
+    local ui_zip=""
+
+    mkdir -p "$ui_dir"
+
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update >/dev/null 2>&1 || true
+        apt-get install -y unzip >/dev/null 2>&1 || true
+        apt-get install -y imunify-ui-generic >/dev/null 2>&1 || apt-get install -y imunify-ui-antivirus-generic >/dev/null 2>&1 || true
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y unzip >/dev/null 2>&1 || true
+        yum install -y imunify-ui-generic >/dev/null 2>&1 || true
+    fi
+
+    ui_zip="$(find /var/imunify360 -maxdepth 3 -name 'imunify-plugin.zip' 2>/dev/null | head -n 1 || true)"
+    if [[ -z "$ui_zip" || ! -f "$ui_zip" ]]; then
+        echo "[error] Imunify UI bundle zip not found under /var/imunify360"
+        return 1
+    fi
+
+    rm -rf "$ui_dir/brought_by_package_manager"
+    unzip -o "$ui_zip" -d "$ui_dir" >/dev/null
+
+    cat > "$ui_dir/auto_index.php" <<'PHP'
+<?php
+$candidates = [];
+
+if (!empty($_SERVER['PANEL_USERNAME'])) {
+    $candidates[] = $_SERVER['PANEL_USERNAME'];
+}
+
+$candidates[] = 'root';
+$candidates[] = 'www-data';
+$candidates = array_values(array_unique($candidates));
+
+$token = '';
+foreach ($candidates as $username) {
+    $candidate = trim((string)shell_exec("imunify-antivirus login get --username " . escapeshellarg($username) . " 2>/dev/null"));
+    if ($candidate !== '') {
+        $token = $candidate;
+        break;
+    }
+}
+
+if ($token === '') {
+    http_response_code(500);
+    echo 'Unable to generate ImunifyAV login token.';
+    exit;
+}
+
+$bundle_index_php = __DIR__ . '/index.php';
+$bundle_nav_index = __DIR__ . '/brought_by_package_manager/nav-root/index.html';
+$fallback_index = __DIR__ . '/index.html';
+
+if (file_exists($bundle_index_php)) {
+    $target = '/3rdparty/imunifyfav/index.php';
+} elseif (file_exists($bundle_nav_index)) {
+    $target = '/3rdparty/imunifyfav/brought_by_package_manager/nav-root/index.html';
+} else {
+    $target = '/3rdparty/imunifyfav/index.html';
+}
+
+if (!file_exists($bundle_index_php) && !file_exists($bundle_nav_index) && !file_exists($fallback_index)) {
+    http_response_code(500);
+    echo 'ImunifyAV UI bundle is not installed.';
+    exit;
+}
+
+header("Location: " . $target . "#/login?token=" . urlencode($token));
+exit;
+PHP
+
+    chown -R nobody:nogroup "$ui_dir"
+    find "$ui_dir" -type d -exec chmod 755 {} \;
+    find "$ui_dir" -type f -exec chmod 644 {} \;
+    chmod 755 "$ui_dir"/bin/execute.py "$ui_dir"/sbin/execute.py "$ui_dir"/sbin/*.sh "$ui_dir"/sbin/*.py 2>/dev/null || true
+    php -l "$ui_dir/auto_index.php" >/dev/null || return 1
+    [[ -f "$ui_dir/index.php" || -f "$ui_dir/brought_by_package_manager/nav-root/index.html" || -f "$ui_dir/index.html" ]] || return 1
 }
 
 patch_webmail() {
