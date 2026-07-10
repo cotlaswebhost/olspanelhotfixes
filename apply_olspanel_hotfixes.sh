@@ -78,6 +78,56 @@ new_func = '''def install_imunifyfav_now():
                 check=True,
             )
 
+        auto_index_path = os.path.join(imunify_ui_path, "auto_index.php")
+        with open(auto_index_path, "w", encoding="utf-8") as auto_file:
+            auto_file.write("""<?php
+$candidates = [];
+
+if (!empty($_SERVER['PANEL_USERNAME'])) {
+    $candidates[] = $_SERVER['PANEL_USERNAME'];
+}
+
+$candidates[] = 'root';
+$candidates[] = 'www-data';
+$candidates = array_values(array_unique($candidates));
+
+$token = '';
+foreach ($candidates as $username) {
+    $candidate = trim((string)shell_exec("imunify-antivirus login get --username " . escapeshellarg($username) . " 2>/dev/null"));
+    if ($candidate !== '') {
+        $token = $candidate;
+        break;
+    }
+}
+
+if ($token === '') {
+    http_response_code(500);
+    echo 'Unable to generate ImunifyAV login token.';
+    exit;
+}
+
+$bundle_index_php = __DIR__ . '/index.php';
+$bundle_nav_index = __DIR__ . '/brought_by_package_manager/nav-root/index.html';
+$fallback_index = __DIR__ . '/index.html';
+
+if (file_exists($bundle_index_php)) {
+    $target = '/3rdparty/imunifyfav/index.php';
+} elseif (file_exists($bundle_nav_index)) {
+    $target = '/3rdparty/imunifyfav/brought_by_package_manager/nav-root/index.html';
+} else {
+    $target = '/3rdparty/imunifyfav/index.html';
+}
+
+if (!file_exists($bundle_index_php) && !file_exists($bundle_nav_index) && !file_exists($fallback_index)) {
+    http_response_code(500);
+    echo 'ImunifyAV UI bundle is not installed.';
+    exit;
+}
+
+header("Location: " . $target . "#/login?token=" . urlencode($token));
+exit;
+""", encoding='utf-8')
+
         # Step 4: Ensure UI files are readable by panel user.
         print("Step 4: Normalizing ownership and permissions...")
         subprocess.run(
